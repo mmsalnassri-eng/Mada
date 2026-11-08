@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- سياسة أمان المحتوى: السكربت من الملفات المحلية فقط (لا سكربت مضمّن)، ولا اتصال بأي خادم خارجي.
+     الاستثناء الوحيد خطوط Google Fonts. عند النشر داخل المؤسسة: تُستضاف ملفات الخطين على الخادم الداخلي،
+     ويُحذف النطاقان الخارجيان من هذه السياسة ومن وسوم link أدناه. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#0C2830">
+<meta name="description" content="مدى: منصة لإدارة تجربة العمل عن بعد القائم على المخرجات، تقيس الإنتاجية بالمخرجات المعتمدة مقارنة بخط الأساس الحضوري.">
+<title>مدى — منصة العمل عن بعد القائم على المخرجات</title>
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/css/mada.css">
+</head>
+<body>
+<a class="skip" href="#page">تخطَّ إلى المحتوى الرئيسي</a>
+
+<div class="app">
+  <aside class="side" aria-label="الشريط الجانبي">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><path d="M3 15.5h18" stroke="currentColor" stroke-width="1.6" opacity=".35"/><path d="M9 15.5h12" stroke="currentColor" stroke-width="2.2"/><path d="M9 11.2v8.6" stroke="currentColor" stroke-width="2.2"/><circle class="logo-dot" cx="9" cy="7" r="2.2"/></svg></span>
+      <p class="wordmark">مدى<small>العمل عن بعد القائم على المخرجات</small></p>
+    </div>
+    <div>
+      <p class="nav-label" id="nav-label">مساحة العمل</p>
+      <nav class="nav" id="nav" aria-labelledby="nav-label"></nav>
+    </div>
+    <div class="side-foot" id="side-foot"></div>
+  </aside>
+
+  <div class="workspace">
+    <header class="topbar">
+      <div class="crumbs" id="crumbs"></div>
+      <div class="top-actions">
+        <label class="role-switch"><span>عرض النظام بصفة</span>
+          <select id="role" class="input input-sm" data-act="role">
+            <option value="executive">صاحب القرار</option>
+            <option value="manager">مدير مباشر</option>
+            <option value="hr">الموارد البشرية</option>
+            <option value="employee">موظف</option>
+          </select>
+        </label>
+        <span id="ac-slot"></span>
+        <button type="button" class="icon-btn" id="theme-btn" data-act="theme"></button>
+        <div class="user-chip" id="user-chip"></div>
+      </div>
+    </header>
+    <main class="main" id="page" tabindex="-1"></main>
+  </div>
+</div>
+
+<nav class="dock" id="dock" aria-label="شريط مركز إجراءات المدير" hidden></nav>
+<div class="tip" id="tip" role="tooltip"></div>
+<dialog id="dlg" aria-labelledby="dlg-title"></dialog>
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+<noscript><p class="noscript">تحتاج منصة مدى إلى تفعيل JavaScript في المتصفح.</p></noscript>
+
+<script src="assets/js/app.js"></script>
+</body>
+</html>
