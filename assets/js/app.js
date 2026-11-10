@@ -805,12 +805,22 @@ function continuityBanner(){
 /* خط الأفق: خط الأساس وموقع الأداء الحالي على مسطرة واحدة */
 function horizonHTML(base, cur){
   if (base==null || cur==null) return "";
-  const pb = base*100, pc = cur*100, lo = Math.min(pb,pc), hi = Math.max(pb,pc), up = cur >= base;
-  return `<div class="horizon" role="img" aria-label="خط الأساس ${pctTxt(base)}، والأداء خلال التجربة ${pctTxt(cur)}">
-    <div class="hz-track"><span class="hz-seg ${up?"up":"down"}" style="inset-inline-start:${lo}%;inline-size:${Math.max(.6,hi-lo)}%"></span>
+  const vb = base*100, vc = cur*100, up = cur >= base;
+  /* المقياس يُكبَّر حول القيمتين (بهامش 15 نقطة، وبعرض 40 نقطة على الأقل) حتى تُقرأ الفجوة بينهما؛ تُعلَن حدوده في الأسفل */
+  let lo = Math.max(0, Math.floor((Math.min(vb,vc) - 15)/10)*10), hi = Math.min(100, Math.ceil((Math.max(vb,vc) + 15)/10)*10);
+  if (hi - lo < 40){ lo = Math.max(0, hi - 40); hi = Math.min(100, lo + 40); }
+  const at = v => clamp((v - lo)/(hi - lo)*100, 0, 100), pb = at(vb), pc = at(vc);
+  const step = hi - lo <= 50 ? 10 : 20, ticks = [];
+  for (let v = lo; v <= hi; v += step) ticks.push(v);
+  if (ticks[ticks.length-1] !== hi) ticks.push(hi);
+  const zoomed = lo > 0 || hi < 100;
+  return `<div class="horizon" role="img" aria-label="خط الأساس ${pctTxt(base)}، والأداء خلال التجربة ${pctTxt(cur)}${zoomed ? `. المقياس مكبّر من ${lo}% إلى ${hi}%` : ""}">
+    <div class="hz-track"><span class="hz-seg ${up?"up":"down"}" style="inset-inline-start:${Math.min(pb,pc)}%;inline-size:${Math.max(.8,Math.abs(pc-pb))}%"></span>
+      ${ticks.map(v => `<span class="hz-tick" style="inset-inline-start:${at(v)}%"></span>`).join("")}
       <span class="hz-mark base" style="inset-inline-start:${pb}%"><i></i><b>خط الأساس ${pctTxt(base)}</b></span>
       <span class="hz-mark cur" style="inset-inline-start:${pc}%;--from:${pb}%"><i></i><b>خلال التجربة ${pctTxt(cur)}</b></span></div>
-    <div class="hz-scale" aria-hidden="true"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div></div>`;
+    <div class="hz-scale" aria-hidden="true">${ticks.map(v => `<span style="inset-inline-start:${at(v)}%">${v}%</span>`).join("")}</div>
+    ${zoomed ? `<p class="hz-zoom">مقياس مكبّر: من ${lo}% إلى ${hi}%</p>` : ""}</div>`;
 }
 function sparkline(vals){
   const n = vals.length, real = vals.filter(v => v!=null);
@@ -829,8 +839,8 @@ const wkLabel = wk => wk.w < 0
   : `أسبوع التجربة ${wk.w+1}${wk.partial ? " (جارٍ)" : ""}`;
 function weeklyChartSVG(){
   const ws = weeklySeries(), base = execStats().rB;
-  const W = 720, H = 300, pT = 32, pB = 46, pR = 52, pL = 12;
-  const pw = W-pR-pL, ph = H-pT-pB, slot = pw/ws.length, bw = Math.min(34, slot*.56);
+  const W = 900, H = 290, pT = 34, pB = 74, pR = 54, pL = 12;
+  const pw = W-pR-pL, ph = H-pT-pB, slot = pw/ws.length, bw = Math.min(44, slot*.58);
   const x = i => W - pR - slot*(i+.5);              /* الزمن يسير من اليمين إلى اليسار */
   const y = r => pT + ph*(1-r), last = ws.length-1;
   let g = `<defs>
@@ -862,10 +872,18 @@ function weeklyChartSVG(){
       <rect class="hit" x="${(x(i)-slot/2+2).toFixed(1)}" y="${pT-8}" width="${(slot-4).toFixed(1)}" height="${ph+8}" rx="8"/>`;
     if (wk.r!=null){
       const hgt = Math.max(2, ph*wk.r);
+      const inside = hgt >= 30;
+      let ly = pT+ph-hgt+(inside ? 19 : -7);
+      if (inside && hgt >= 52 && base!=null && Math.abs(ly - 4 - y(base)) < 12) ly += 20;   /* الرقم لا يقع تحت خط الأساس المنقّط */
       g += `<rect class="bar ${kind}" data-anchor x="${(x(i)-bw/2).toFixed(1)}" y="${(pT+ph-hgt).toFixed(1)}" width="${bw.toFixed(1)}" height="${hgt.toFixed(1)}" rx="5"/>
-        <text class="val" x="${x(i).toFixed(1)}" y="${(pT+ph-hgt-7).toFixed(1)}" text-anchor="middle">${Math.round(wk.r*100)}</text>`;
+        <text class="val ${inside ? "in-"+kind : ""}" x="${x(i).toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle">${Math.round(wk.r*100)}</text>`;
     } else g += `<rect class="bar empty" data-anchor x="${(x(i)-bw/2).toFixed(1)}" y="${pT+ph-2}" width="${bw.toFixed(1)}" height="2" rx="1"/>`;
     g += `<text class="axis" x="${x(i).toFixed(1)}" y="${H-pB+20}" text-anchor="middle">${wk.w<0 ? "−"+(-wk.w) : wk.w+1}</text></g>`;
+  });
+  [[0, i0>0 ? i0-1 : -1, "قبل التجربة (حضوري)"], [Math.max(i0,0), last, "خلال التجربة"]].forEach(([a,b,t]) => {
+    if (b < a) return;
+    const x1 = x(b) - slot/2 + 8, x2 = x(a) + slot/2 - 8, yy = H - pB + 36;
+    g += `<line class="grp" x1="${x1.toFixed(1)}" x2="${x2.toFixed(1)}" y1="${yy}" y2="${yy}"/><text class="grp-t" x="${((x1+x2)/2).toFixed(1)}" y="${yy+20}" text-anchor="middle">${t}</text>`;
   });
   if (base!=null) g += `<line class="baseline" x1="${pL}" x2="${W-pR}" y1="${y(base)}" y2="${y(base)}"/>`;
   /* خط الاتجاه: متوسط متحرك لثلاثة أسابيع (مرجّح بعدد المخرجات) */
@@ -873,7 +891,7 @@ function weeklyChartSVG(){
     const win = ws.slice(Math.max(0,i-2), i+1), n = win.reduce((s,v) => s+v.n, 0), k = win.reduce((s,v) => s+v.k, 0);
     return n ? [x(i).toFixed(1), y(k/n).toFixed(1)] : null;
   }).filter(Boolean);
-  if (pts.length > 1) g += `<path class="trend" d="M${pts.map(p => p.join(" ")).join(" L")}"/>` + pts.map(p => `<circle class="trend-dot" cx="${p[0]}" cy="${p[1]}" r="3"/>`).join("");
+  if (pts.length > 1) { const e = pts[pts.length-1]; g += `<path class="trend" d="M${pts.map(p => p.join(" ")).join(" L")}"/><circle class="trend-now" cx="${e[0]}" cy="${e[1]}" r="5"/>`; }
   const desc = `الالتزام بالمواعيد أسبوعياً: ${ws.map(wk => (wk.w<0 ? "قبل "+(-wk.w) : "أسبوع "+(wk.w+1))+" "+pctTxt(wk.r)).join("، ")}.`;
   return `<div class="chart-wrap" data-rove="chart"><svg class="chart" viewBox="0 0 ${W} ${H}" direction="ltr" role="group" aria-labelledby="ch-t" aria-describedby="ch-d"><title id="ch-t">الالتزام بالمواعيد أسبوعياً قبل التجربة وخلالها</title><desc id="ch-d">${esc(desc)}</desc>${g}</svg></div>
     <p class="chart-hint">مرّر المؤشر فوق أي عمود، أو انتقل إليه بمفتاح Tab ثم تنقّل بين الأسابيع بالأسهم.</p>`;
@@ -994,14 +1012,14 @@ function pageExec(){
       {actions:`${mockTag()}<button class="btn btn-primary" type="button" data-act="nav" data-page="report">${ICON.report}التقرير التنفيذي</button>`}) + `
   <div class="stack">
     <section class="card hero${up?"":" down"}" aria-labelledby="h-verdict">
-      <span class="hero-glow" aria-hidden="true"></span>
       <div>
         <div class="hero-meta"><span class="pill ${up?"pill-ok":"pill-no"}">${up?ICON.trendUp:ICON.trendDown}${up?"الإنتاجية عند خط الأساس أو أعلى":"الإنتاجية دون خط الأساس"}</span><span class="small muted">قراءة مرحلية، الأسبوع ${pi.week} من ${c.pilotWeeks}</span></div>
         <h2 id="h-verdict" class="lead">خلال التجربة بلغ الالتزام بالمواعيد <span class="num">${pctTxt(st.rP)}</span> مقابل <span class="num">${pctTxt(st.rB)}</span> في الأسابيع الستة السابقة لها، بتغير ${st.delta==null?"—":ptsTxt(st.delta)}.</h2>
         ${horizonHTML(st.rB, st.rP)}
         <p class="note">محسوب من ${st.nP} من المخرجات المستحقة خلال التجربة، و${st.nB} قبلها.</p>
       </div>
-      <div class="hero-side"><b class="num">${met}/${crit.length}</b><span>معايير نجاح محققة</span>
+      <div class="hero-side"><b class="num">${met} من ${crit.length}</b><span>معايير نجاح محققة</span>
+        <ul class="pips" aria-label="حالة معايير النجاح">${crit.map(m => `<li><button type="button" class="pip ${m.ok?"ok":"no"}" data-tip="${tip(`<div class="tip-h">${esc(m.short)}</div><div class="tip-row"><span>الحالي</span><b class="num">${esc(String(m.v))}</b></div><div class="tip-row"><span>الهدف</span><b>${esc(m.t)}</b></div><div class="tip-sep"></div><div class="tip-row"><span>الحالة</span><b class="${m.ok?"c-remote":"c-office"}">${m.ok?"محقق":"غير محقق"}</b></div>`)}" aria-label="${esc(m.short)}: ${m.ok?"محقق":"غير محقق"}"></button></li>`).join("")}</ul>
         <button class="btn btn-quiet btn-sm" type="button" data-act="nav" data-page="pilot">عرض المعايير</button></div>
     </section>
 
@@ -1016,15 +1034,15 @@ function pageExec(){
         how:"أيام العمل عن بعد المعتمدة منذ تاريخ كل قرار × زمن التنقل ذهاباً وإياباً كما صرّح به الموظف. رقم تقديري لا يُحتسب وفراً مالياً."})}
     </div>
 
-    ${card({title:"الالتزام بالمواعيد أسبوعياً", icon:"activity", sub:"خط الأساس الحضوري مقابل الأداء الفعلي خلال التجربة، مع خط الاتجاه لثلاثة أسابيع",
-      body: weeklyChartSVG() + `<div class="legend"><span><i class="sw b"></i>قبل التجربة (حضوري)</span><span><i class="sw p"></i>خلال التجربة</span><span><i class="sw c"></i>الأسبوع الجاري</span><span><i class="sw l"></i>متوسط خط الأساس <b class="num">${pctTxt(st.rB)}</b></span><span><i class="sw t"></i>الاتجاه (متوسط 3 أسابيع)</span></div>` + weeklyTable()})}
+    ${card({title:"الالتزام بالمواعيد أسبوعياً", cls:"flat", sub:"خط الأساس الحضوري مقابل الأداء الفعلي خلال التجربة، مع خط الاتجاه لثلاثة أسابيع",
+      body: weeklyChartSVG() + `<div class="legend"><span><i class="sw b"></i>قبل التجربة (حضوري)</span><span><i class="sw p"></i>خلال التجربة</span><span><i class="sw c"></i>الأسبوع الجاري</span><span><i class="sw l"></i>متوسط خط الأساس <b class="num">${pctTxt(st.rB)}</b></span><span><i class="sw t"></i>الاتجاه (متوسط 3 أسابيع)، والنقطة الذهبية أحدث قراءة</span></div>` + weeklyTable()})}
 
     <div class="grid-even">
       ${card({title:"العاملون عن بعد مقابل الحضوريين", icon:"users", sub:"كل مجموعة مقارنة بخط أساسها", body:groupCompareHTML()})}
       ${riskRadarHTML(true)}
     </div>
 
-    ${card({title:"معايير النجاح المعتمدة مسبقاً", icon:"target", sub:`${met} من ${crit.length} محققة`,
+    ${card({title:"معايير النجاح المعتمدة مسبقاً", cls:"flat", sub:`${met} من ${crit.length} محققة`,
       body:`<ul class="checklist">${crit.map(m => `<li><span class="st ${m.ok?"ok":"no"}">${stIcon(m.ok?"ok":"no")}</span>
         <span class="grow">${esc(m.n)}${m.mock?` <span class="small muted">(استبيان وهمي)</span>`:""}</span><b class="num">${esc(String(m.v))}</b>
         <span class="pill ${m.ok?"pill-ok":"pill-no"}">${m.ok?"محقق":"غير محقق"}</span></li>`).join("")}</ul>`})}
@@ -1616,6 +1634,7 @@ function render(){
   main.classList.toggle("animate", animateNext);
   main.innerHTML = continuityBanner() + PAGES[state.session.page]();
   animateNext = false;
+  document.querySelectorAll(".chart-wrap").forEach(w => { try { w.scrollLeft = -w.scrollWidth; } catch(e){} });
   renderDock();
   if (fk){
     let el = null; try { el = document.querySelector(fk); } catch(e){}
